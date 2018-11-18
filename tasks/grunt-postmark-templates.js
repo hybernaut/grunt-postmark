@@ -31,28 +31,39 @@ module.exports = function(grunt) {
       grunt.fail.warn('Missing required template property "subject" \n');
     }
 
+    if (!template.htmlBody && !template.htmlSrc) {
+      grunt.log.error('Missing template property "htmlBody" or "htmlSrc"\n');
+    }
+
+    if (!template.textBody && !template.textSrc) {
+      grunt.log.error('Missing template property "textBody" or "textSrc"\n');
+    }
+
     var postmark = require('postmark');
     var client = new postmark.Client(serverToken);
 
     // read the referenced files, but hold on to the original filenames
-    var expanded = Object.assign({}, template);
-
-    if (expanded.htmlBody) {
-      expanded.htmlBody = grunt.file.read(expanded.htmlBody);
-    }
-    if (expanded.textBody) {
-      expanded.textBody = grunt.file.read(expanded.textBody);
-    }
+    var expanded = {
+      Name: template.name,
+      Subject: template.subject,
+      HtmlBody: template.htmlBody || grunt.file.read(template.htmlSrc),
+      TextBody: template.textBody || grunt.file.read(template.textSrc),
+      TemplateId: template.templateId
+    };
 
     if (template.templateId) {
       client.editTemplate(template.templateId, expanded, function(err, response) {
         if (err && err.code === 1101) {
           grunt.log.warn('Template ' + template.templateId + ' not found, so attempting create');
           delete template.templateId;
-          delete expanded.templateId;
+          delete expanded.TemplateId;
           client.createTemplate(expanded, function(err, response) {
+            if (err == null) {
+              grunt.log.writeln('Template ' + JSON.stringify(template.name) + ' created: ' + JSON.stringify(response.TemplateId));
+            } else {
+              grunt.log.writeln('Error creating template ' + template.name + ': ' + JSON.stringify(err));
+            }
             handleResponse(err, response, done, template);
-            grunt.log.writeln('Template ' + template.name + ' created: ' + JSON.stringify(response.TemplateId));
           });
         } else {
           grunt.log.writeln('Template ' + template.name + ' updated: ' + JSON.stringify(response.TemplateId));
@@ -61,7 +72,7 @@ module.exports = function(grunt) {
       });
     } else {
       client.createTemplate(expanded, function(err, response) {
-        grunt.log.writeln('Template ' + template.name + ' created: ' + JSON.stringify(response.TemplateId));
+        grunt.log.writeln('Template ' + expanded.Name + ' created: ' + JSON.stringify(response.TemplateId));
         handleResponse(err, response, done, template);
       });
     }

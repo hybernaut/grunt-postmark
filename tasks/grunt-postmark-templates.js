@@ -15,6 +15,8 @@ module.exports = function(grunt) {
     var options = this.options();
     var template = this.data;
 
+    var defaultLocale = 'en';
+
     var serverToken = options.serverToken || grunt.config('secrets.serverToken') || grunt.config('secret.postmark.server_token');
 
     if (!serverToken) {
@@ -41,6 +43,8 @@ module.exports = function(grunt) {
 
     var postmark = require('postmark');
     var client = new postmark.Client(serverToken);
+
+    var locale = template.locale || defaultLocale;
 
     // read the referenced files, but hold on to the original filenames
     var expanded = {
@@ -72,8 +76,14 @@ module.exports = function(grunt) {
       });
     } else {
       client.createTemplate(expanded, function(err, response) {
-        grunt.log.writeln('Template ' + expanded.Name + ' created: ' + JSON.stringify(response.TemplateId));
+        if (!err && response.TemplateId) {
+          grunt.log.writeln('Template ' + expanded.Name + ' created: ' + JSON.stringify(response.TemplateId));
+        } else {
+          grunt.log.writeln('Error on createTemplate(' + expanded.name + '): ' + JSON.stringify(err) + JSON.stringify(response));
+
+        }
         handleResponse(err, response, done, template);
+
       });
     }
 
@@ -84,6 +94,7 @@ module.exports = function(grunt) {
       errorMessage(err);
       done();
     } else {
+
       template.templateId = response.TemplateId;
       // append this record to the result array, used by postmark-templates-output task
       var upd = grunt.config.get('updatedTemplates') || {};

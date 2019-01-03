@@ -67,12 +67,15 @@ module.exports = function(grunt) {
             } else {
               grunt.log.writeln('Error creating template ' + template.name + ': ' + JSON.stringify(err));
             }
-            handleResponse(err, response, done, template);
           });
-        } else {
+        } else if (!err && response.TemplateId) {
           grunt.log.writeln('Template ' + template.name + ' updated: ' + JSON.stringify(response.TemplateId));
-          handleResponse(err, response, done, template);
+        } else {
+          grunt.log.writeln('Error on createTemplate(' + template.name + '): ' + JSON.stringify(err) + JSON.stringify(response));
         }
+
+        handleResponse(err, response, done, template);
+
       });
     } else {
       client.createTemplate(expanded, function(err, response) {
